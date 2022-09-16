@@ -1,4 +1,3 @@
-# どんなdockerイメージを利用して構築をするか
 FROM php:8.1-apache
 
 RUN cd /etc/apache2/mods-enabled \
@@ -11,7 +10,6 @@ ADD 000-default.conf /etc/apache2/sites-enabled/
 # Composerのインストール
 RUN cd /usr/bin && curl -s http://getcomposer.org/installer | php && ln -s /usr/bin/composer.phar /usr/bin/composer
 
-# ミドルウェアインストール
 RUN apt-get update \
     && apt-get install -y \
     git \

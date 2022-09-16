@@ -1,2 +1,4 @@
 .env
 phpmyadmin/sessions/
+db_data/*
+!db_data/.gitkeep

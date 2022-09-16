@@ -1,0 +1,765 @@
+openapi: 3.0.3
+info:
+  title: Doors賃貸物件管理マニュアル
+  description: |-
+    Doors株式会社システム移行に伴うAPI設計書  
+
+    リンク:
+    - [仕様書](https://drive.google.com/drive/folders/1MQ0I6y_Ax2msdJxhhvC6JuXeP_GcIb0a)
+    - [GitHubリポジトリ](https://github.com/yui666a/rental_management_manual/)
+  version: 0.0.1
+
+servers:
+  - url: /api/v1
+tags:
+  - name: user
+    description: ユーザ情報
+    # externalDocs:
+    # description: Find out more
+    # url: http://swagger.io
+  - name: category
+    description: カテゴリー
+  - name: file
+    description: ファイル
+  - name: cs
+    description: お客様対応 (Customer Support)
+  - name: qa
+    description: 質問 (Q&A)
+  - name: manual
+    description: マニュアル
+  - name: glossary
+    description: 用語
+  - name: form
+    description: 帳票サンプル
+  - name: news
+    description: ニュース (プライオリティ：低)
+
+paths:
+  /user:
+    post:
+      tags:
+        - user
+      summary: アカウントの作成
+      description: 管理者によって，1ユーザのアカウントを作成する．
+      operationId: createUser
+      requestBody:
+        description: Created user object
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUser"
+      responses:
+        default:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /user/createWithList:
+    post:
+      tags:
+        - user
+      summary: 複数アカウントの作成
+      description: 管理者によって，複数ユーザのアカウントを作成する
+      operationId: createUsersWithListInput
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/UpdateUser"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        # default:
+        #   description: successful operation
+  /user/login:
+    get:
+      tags:
+        - user
+      operationId: loginUser
+      parameters:
+        - name: user_id
+          in: query
+          description: ユーザ名
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: header
+          description: SHA3でハッシュ化されたパスワード
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                # type: string
+                $ref: "#/components/schemas/User"
+        "400":
+          description: 無効な user_id または password だった場合
+  /user/logout:
+    get:
+      tags:
+        - user
+      operationId: logoutUser
+      parameters:
+        - name: user_id
+          in: query
+          description: ユーザ名
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: successful operation
+  /user/{user_id}:
+    get:
+      tags:
+        - user
+      summary: ユーザ情報を取得
+      description: "user_idでユーザ情報を取得"
+      operationId: getUserByName
+      parameters:
+        - name: user_id
+          in: path
+          description: "取得したいユーザのuser_idを用いる"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid user_id supplied
+        "404":
+          description: User not found
+    put:
+      tags:
+        - user
+      summary: ユーザ情報の更新
+      description: ユーザ自身or管理者のみ変更が可能．
+      operationId: updateUser
+      parameters:
+        - name: user_id
+          in: path
+          description: 変更したいアカウントのuser_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 変更したい項目のみ入力する
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUser"
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid user_id supplied
+        "404":
+          description: User not found
+        # default:
+        #   description: successful operation
+    delete:
+      tags:
+        - user
+      summary: ユーザの削除
+      description: 管理者のみ変更が可能
+      operationId: deleteUser
+      parameters:
+        - name: user_id
+          in: path
+          description: 削除したいアカウントのuser_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "400":
+          description: Invalid user_id supplied
+        "404":
+          description: User not found
+
+  /category:
+    get:
+      tags:
+        - category
+      summary: カテゴリ一覧
+      description: カテゴリを全件取得
+      operationId: getCategories
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /category/{category_id}:
+    get:
+      tags:
+        - category
+      summary: 指定のカテゴリを取得
+      description: カテゴリの情報
+      operationId: getCategoryById
+      parameters:
+        - name: category_id
+          in: path
+          description: "取得したいページの category_id を用いる"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    put:
+      tags:
+        - category
+      summary: カテゴリの編集
+      description: カテゴリの編集（管理者のみ変更が可能）
+      operationId: updateCategory
+      parameters:
+        - name: category_id
+          in: path
+          description: 変更したいカテゴリの category_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 変更したい項目のみ入力する
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategory"
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          description: Invalid cs_id supplied
+        "404":
+          description: CustomerSupport not found
+        # default:
+        #   description: successful operation
+    delete:
+      tags:
+        - category
+      summary: カテゴリの削除
+      description: 管理者のみ変更が可能
+      operationId: deleteCategory
+      parameters:
+        - name: category_id
+          in: path
+          description: 削除したいカテゴリの category_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "400":
+          description: Invalid category_id supplied
+        "404":
+          description: Category not found
+
+  /category/type/{type_id}:
+    get:
+      tags:
+        - category
+      summary: 各機能のカテゴリ一覧
+      description: お客様対応， Q&Aなどの指定機能のカテゴリ一覧
+      operationId: getCategoriesByType
+      parameters:
+        - name: type_id
+          in: path
+          description: "取得したいカテゴリの category_id を用いる"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /cs:
+    get:
+      tags:
+        - cs
+      summary: 全件取得
+      description: お客様対応の情報を全件取得（莫大な情報量に注意）
+      operationId: getCustomerSuppports
+
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSupport"
+  /cs/{cs_id}:
+    get:
+      tags:
+        - cs
+      summary: ページ取得
+      description: お客様対応の指定ページの情報
+      operationId: getCustomerSuppportById
+      parameters:
+        - name: cs_id
+          in: path
+          description: "取得したいページのcs_idを用いる"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSupport"
+    put:
+      tags:
+        - cs
+      summary: ページの編集
+      description: お客様対応の指定ページの編集（管理者のみ変更が可能）
+      operationId: updateCustomerSupport
+      parameters:
+        - name: cs_id
+          in: path
+          description: 変更したいページの cs_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 変更したい項目のみ入力する
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerSupport"
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSupport"
+        "400":
+          description: Invalid cs_id supplied
+        "404":
+          description: CustomerSupport not found
+        # default:
+        #   description: successful operation
+    delete:
+      tags:
+        - cs
+      summary: ページの削除
+      description: 管理者のみ変更が可能
+      operationId: deleteCustomerSupport
+      parameters:
+        - name: cs_id
+          in: path
+          description: 削除したいページの cs_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "400":
+          description: Invalid cs_id supplied
+        "404":
+          description: CustomerSupport not found
+
+  # /cs/category:
+  #   get:
+  #     tags:
+  #       - cs
+  #     summary: 該当カテゴリのページの全件取得
+  #     description: お客様対応のカテゴリの情報を全件取得
+  #     operationId: getCustomerSuppportsCategory
+  #     responses:
+  #       '200':
+  #         description: successful operation
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: array
+  #               items:
+  #                 $ref: '#/components/schemas/CustomerSupport'
+  #       '400':
+  #         description: Invalid category_id supplied
+  #       '404':
+  #         description: CustomerSupport not found
+
+  /cs/category/{category_slug}:
+    get:
+      tags:
+        - cs
+      summary: カテゴリの全件取得
+      description: お客様対応の指定したカテゴリの情報を全件取得
+      operationId: getCustomerSuppportsByCategorySlug
+      parameters:
+        - name: category_slug
+          in: path
+          description: "取得したいカテゴリの category_slug を用いる"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerSupport"
+        "400":
+          description: Invalid category_id supplied
+        "404":
+          description: CustomerSupport not found
+
+  /file:
+    get:
+      tags:
+        - file
+      summary: ファイル一覧
+      description: ""
+      operationId: getFiles
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    file_id:
+                      type: integer
+                      example: 396
+                    file_name:
+                      type: string
+                      example: "example.ttpx"
+    post:
+      tags:
+        - file
+      summary: ファイルのアップロード
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: successful operation
+
+  /file/multifiles:
+    post:
+      tags:
+        - file
+      summary: ファイルのアップロード
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        200:
+          description: successful operation
+
+components:
+  schemas:
+    NewUser:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: "tsutumi"
+        user_name:
+          type: string
+          example: "堤 真一"
+        department:
+          type: string
+          example: "総務"
+        position:
+          type: string
+          example: 主任
+        birthday:
+          type: string
+          example: "1998-6-27"
+        joining_date:
+          type: string
+          example: "2014-10-10T04:50:40Z"
+        password:
+          type: string
+          example: "adsfjbad (sha3)"
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: "tsutumi"
+        user_name:
+          type: string
+          example: "堤 真一"
+        department:
+          type: string
+          example: "総務"
+        position:
+          type: string
+          example: 主任
+        birthday:
+          type: string
+          example: "1998-6-27"
+        joining_date:
+          type: string
+          example: "2014-10-10T04:50:40Z"
+        password:
+          type: string
+          example: "adsfjbad (sha3)"
+        last_login:
+          type: string
+          example: "2022-09-03T04:50:40Z"
+      xml:
+        name: user
+    UpdateUser:
+      type: object
+      properties:
+        updateUser:
+          $ref: "#/components/schemas/NewUser"
+        user:
+          type: string
+          example: "admin00"
+      xml:
+        name: user
+
+    NewCategory:
+      type: object
+      properties:
+        type_id:
+          type: integer
+          format: int32
+          example: 3
+        name:
+          type: string
+          example: "これはカテゴリです"
+        slug:
+          type: string
+          example: "this-is-slug"
+    Category:
+      type: object
+      properties:
+        category_id:
+          type: integer
+          format: int32
+          example: 8
+        type_id:
+          type: integer
+          format: int32
+          example: 3
+        name:
+          type: string
+          example: "これはカテゴリです"
+        slug:
+          type: string
+          example: "this-is-slug"
+    UpdateCategory:
+      type: object
+      properties:
+        updateCategory:
+          $ref: "#/components/schemas/NewCategory"
+        user:
+          type: string
+          example: "admin00"
+      xml:
+        name: updatecustomersupport
+
+    NewCustomerSupport:
+      type: object
+      properties:
+        category_id:
+          type: integer
+          format: int32
+          example: 8
+        title:
+          type: string
+          example: "This is title"
+        point:
+          type: string
+          example: "This is tips text"
+        references:
+          type: string
+          example: "[23, 44, 25]"
+        attached_files:
+          type: string
+          example: "[23, 44, 25]"
+        main_text:
+          type: string
+          example: "This is main text"
+        status:
+          type: string
+          example: "published | draft | deleted"
+        create_user_id:
+          type: integer
+          format: int32
+          example: 3
+    CustomerSupport:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64, auto increment
+          example: 1012
+        category_id:
+          type: integer
+          format: int32
+          example: 8
+        title:
+          type: string
+          example: "This is title"
+        point:
+          type: string
+          example: "This is tips text"
+        references:
+          type: string
+          example: "[23, 44, 25]"
+        attached_files:
+          type: string
+          example: "[23, 44, 25]"
+        main_text:
+          type: string
+          example: "This is main text"
+        status:
+          type: string
+          example: "draft"
+        view_count:
+          type: integer
+          format: int64
+          example: 1012
+        create_user_id:
+          type: integer
+          format: int32
+          example: 3
+        update_log_id:
+          type: integer
+          format: int64
+          example: 100020
+        created_at:
+          type: integer
+          format: UTC
+          example: "2022-09-03T04:50:40Z"
+        updated_at:
+          type: string
+          format: UTC
+          example: "2022-09-03T04:50:40Z"
+      xml:
+        name: createcustomersupports
+    UpdateCustomerSupport:
+      type: object
+      properties:
+        updateCs:
+          $ref: "#/components/schemas/NewCustomerSupport"
+        user:
+          type: string
+          example: "admin00"
+      xml:
+        name: updatecustomersupport
+
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        type:
+          type: string
+        message:
+          type: string
+      xml:
+        name: "##default"
+  requestBodies:
+    #   Pet:
+    #     description: Pet object that needs to be added to the store
+    #     content:
+    #       application/json:
+    #         schema:
+    #           $ref: '#/components/schemas/Pet'
+    UserArray:
+      description: List of user object
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/User"
+  securitySchemes:
+    petstore_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://petstore3.swagger.io/oauth/authorize
+          scopes:
+            write:pets: modify pets in your account
+            read:pets: read your pets
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
